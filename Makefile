@@ -2,7 +2,7 @@ CC := clang
 OBJCOPY := llvm-objcopy
 
 TARGET := armv6-none-eabi
-CFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -ffreestanding -O2 -Wall -Wextra -flto=full
+CFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -ffreestanding -O3 -Wall -Wextra -Wpedantic -Werror -std=c23 -flto=full
 LDFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -fuse-ld=lld -T linker.ld -nostdlib -flto=full
 
 OBJS := main.o
@@ -19,6 +19,6 @@ kernel.elf: $(OBJS) linker.ld
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJS) kernel.elf kernel.img
+	rm -f $(OBJS) kernel.elf kernel.img compile_commands.json
 
 .PHONY: all clean
