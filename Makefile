@@ -2,10 +2,10 @@ CC := clang
 OBJCOPY := llvm-objcopy
 
 TARGET := armv6-none-eabi
-CFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -ffreestanding -O2 -Wall -Wextra
-LDFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -fuse-ld=lld -T linker.ld -nostdlib
+CFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -ffreestanding -O2 -Wall -Wextra -flto=full
+LDFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -fuse-ld=lld -T linker.ld -nostdlib -flto=full
 
-OBJS := booter.o main.o
+OBJS := main.o
 
 all: kernel.img
 
@@ -16,9 +16,6 @@ kernel.elf: $(OBJS) linker.ld
 	$(CC) $(LDFLAGS) -o $@ $(OBJS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-%.o: %.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:

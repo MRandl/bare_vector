@@ -9,9 +9,9 @@
 #define GPCLR1  	(*(volatile uint32_t *)(GPIO_BASE + 0x2C))
 
 #define SYSTIMER_BASE (PERIPHERAL_BASE + 0x3000UL)
-#define SYSTIMER_CLOCK_STATUS   (*(volatile uint32_t *)(SYSTIMER_BASE + 0x00)) // match status, write-1-to-clear
-#define SYSTIMER_CLOCK  (*(volatile uint32_t *)(SYSTIMER_BASE + 0x04)) // free-running, increments once per microsecond
-#define SYSTIMER_C1   (*(volatile uint32_t *)(SYSTIMER_BASE + 0x10)) // compare 1 (C0/C2 are claimed by the GPU firmware)
+#define SYSTIMER_CLOCK_INTERRUPT_STATUS   (*(volatile uint32_t *)(SYSTIMER_BASE + 0x00))
+#define SYSTIMER_CLOCK_VALUE    (*(volatile uint32_t *)(SYSTIMER_BASE + 0x04))
+#define SYSTIMER_CLOCK_TARGET   (*(volatile uint32_t *)(SYSTIMER_BASE + 0x10))
 
 #define IRQ_BASE    (PERIPHERAL_BASE + 0xB000UL)
 #define IRQ_ENABLE1 (*(volatile uint32_t *)(IRQ_BASE + 0x210)) // write-1-to-enable, per source
@@ -19,23 +19,25 @@
 #define SYSTIMER_MASK (1u << 1) // system timer 1 match bit, shared by CS and IRQ_ENABLE1/PENDING1
 
 #define ACT_LED_PIN 47 // GPIO47 drives the ACT LED on pi zero, active-low
-#define BLINK_HALF_PERIOD_USEC 500000 // on-time == off-time == half the 1s blink period
+#define BLINK_HALF_PERIOD_USEC 500000
 
 static void wait_until(uint32_t target) {
-    SYSTIMER_C1 = target;
-    while (!(SYSTIMER_CLOCK_STATUS & SYSTIMER_MASK)) {
+    SYSTIMER_CLOCK_TARGET = target;
+    while (!(SYSTIMER_CLOCK_INTERRUPT_STATUS & SYSTIMER_MASK)) {
         __asm__ volatile("wfi");
     }
-    SYSTIMER_CLOCK_STATUS = SYSTIMER_MASK;
+    SYSTIMER_CLOCK_INTERRUPT_STATUS = SYSTIMER_MASK; // write 1 to interr. bit == acknowledge and clear
 }
 
-noreturn int main() {
-    // Pin 47 sits in GPFSEL4 (covers GPIO40-49), 3 bits per pin: bits [23:21]. 001 = output.
+__attribute__((used))
+noreturn void kernel_main(void) {
+    // Pin 47 sits in GPFSEL4 (covers GPIO40-49), 3 bits per pin: bits [23:21]
+    // setting these to 001 to declare the pin as output.
     GPFSEL4 = (GPFSEL4 & ~(0x7u << 21)) | (0x1u << 21);
 
-    IRQ_ENABLE1 = SYSTIMER_MASK; // let system timer 1 matches assert the core's IRQ line
+    IRQ_ENABLE1 = SYSTIMER_MASK; // enable core IRQ line
 
-    uint32_t next_wake = SYSTIMER_CLOCK + BLINK_HALF_PERIOD_USEC;
+    uint32_t next_wake = SYSTIMER_CLOCK_VALUE + BLINK_HALF_PERIOD_USEC;
     while (1) {
         GPCLR1 = 1u << (ACT_LED_PIN - 32); // clear = LED on (active-low)
         wait_until(next_wake);
@@ -44,4 +46,12 @@ noreturn int main() {
         wait_until(next_wake);
         next_wake += BLINK_HALF_PERIOD_USEC;
     }
+}
+
+__attribute__((naked, section(".text.boot")))
+noreturn void _start(void) {
+    __asm__ volatile(
+        "ldr sp, =_start \n"
+        "b kernel_main \n"
+    );
 }
