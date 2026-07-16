@@ -5,20 +5,26 @@ TARGET := armv6-none-eabi
 CFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -ffreestanding -O3 -Wall -Wextra -Wpedantic -Werror -std=c23 -flto=full
 LDFLAGS := --target=$(TARGET) -mcpu=arm1176jzf-s -fuse-ld=lld -T linker.ld -nostdlib -flto=full
 
-OBJS := main.o
+SRC_DIR := src
+BUILD_DIR := target
 
-all: kernel.img
+OBJS := $(BUILD_DIR)/main.o
 
-kernel.img: kernel.elf
+all: $(BUILD_DIR)/kernel.img
+
+$(BUILD_DIR)/kernel.img: $(BUILD_DIR)/kernel.elf
 	$(OBJCOPY) -O binary $< $@
 
-kernel.elf: $(OBJS) linker.ld
+$(BUILD_DIR)/kernel.elf: $(OBJS) linker.ld
 	$(CC) $(LDFLAGS) -o $@ $(OBJS)
 
-%.o: %.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+$(BUILD_DIR):
+	mkdir -p $@
+
 clean:
-	rm -f $(OBJS) kernel.elf kernel.img compile_commands.json
+	rm -rf $(BUILD_DIR) compile_commands.json
 
 .PHONY: all clean

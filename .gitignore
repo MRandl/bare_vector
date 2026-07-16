@@ -1,1 +1,4 @@
 .cache/
+.claude/
+target/
+compile_commands.json
