@@ -7,7 +7,7 @@
 // complete in program order so a barrier is required whenever code switches
 // from touching one peripheral block to another
 static inline void mem_barrier(void) {
-    __asm__ volatile("mcr p15, 0, %0, c7, c10, 5" :: "r"(0) : "memory");
+    __asm__ volatile("mcr p15, 0, %0, c7, c10, 4" :: "r"(0) : "memory");
 }
 
 #define PERIPHERAL_BASE 0x20000000UL
