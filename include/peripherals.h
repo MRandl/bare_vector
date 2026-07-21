@@ -4,10 +4,8 @@
 #include <stdint.h>
 
 // The BCM2835 does not guarantee that accesses to different peripherals
-// complete in program order; a barrier is required whenever code switches
-// from touching one peripheral block to another (ARM Peripherals manual, 1.3).
-// ARM1176 is plain ARMv6, which has no dedicated dmb/dsb instruction; the
-// barrier is issued through the CP15 coprocessor instead.
+// complete in program order so a barrier is required whenever code switches
+// from touching one peripheral block to another
 static inline void mem_barrier(void) {
     __asm__ volatile("mcr p15, 0, %0, c7, c10, 5" :: "r"(0) : "memory");
 }

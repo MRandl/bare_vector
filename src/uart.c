@@ -6,8 +6,6 @@
 
 #define UART_BAUD_RATE 115200UL
 
-// Fixed-point (x64) baud rate divisor, rounded to the nearest 1/64th:
-// divisor = UART_CLOCK_HZ / (16 * UART_BAUD_RATE), so divisor * 64 = 4 * UART_CLOCK_HZ / UART_BAUD_RATE.
 #define UART_BAUD_DIVISOR_X64 ((4 * UART_CLOCK_HZ + UART_BAUD_RATE / 2) / UART_BAUD_RATE)
 
 static void delay_cycles(volatile uint32_t count) {
@@ -18,26 +16,23 @@ static void delay_cycles(volatile uint32_t count) {
 
 void uart_init(void) {
     mem_barrier();
-    UART0_CR = 0; // disable UART while it's configured
+    UART0_CR = 0; // disable UART while it's being configured
     mem_barrier(); // switching from the UART peripheral to GPIO
 
     // GPIO14/15 = TXD0/RXD0, alternate function 0 (ALT0 = 0b100), 3 bits per pin
+    // enables the communication pins (green/yellow) for the rpi
     GPFSEL1 = (GPFSEL1 & ~((0x7u << 12) | (0x7u << 15))) | (0x4u << 12) | (0x4u << 15);
 
     // Disable pull up/down on pins 14 and 15 (BCM2835 ARM peripherals manual 6.2),
-    // so an idle/floating line can't be misread as noise on TX/RX. GPPUD and
-    // GPPUDCLK0 don't take effect on write: they feed an internal control
-    // signal that needs a set number of clock cycles to propagate through the
-    // pad logic before the next step is allowed to happen, so the datasheet
-    // mandates busy-waiting ~150 cycles between each write, not just after.
+    // so an idle/floating line can't be misread as noise on TX/RX
     GPPUD = 0;
-    delay_cycles(150);
+    delay_cycles(150); // mandated by the spec as is, believe it or not. I didnt make this up
     GPPUDCLK0 = (1u << 14) | (1u << 15);
     delay_cycles(150);
     GPPUD = 0;
     GPPUDCLK0 = 0;
 
-    mem_barrier(); // switching from GPIO back to the UART peripheral
+    mem_barrier();
     UART0_ICR = 0x7FFu; // clear pending interrupts
 
     UART0_IBRD = UART_BAUD_DIVISOR_X64 / 64;
